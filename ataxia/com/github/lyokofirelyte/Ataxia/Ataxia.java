@@ -13,10 +13,11 @@ import lombok.SneakyThrows;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
-import com.github.lyokofirelyte.Ataxia.message.Channel;
-
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
+
+import com.github.lyokofirelyte.Ataxia.message.Channel;
+import com.google.code.chatterbotapi.ChatterBotSession;
 
 public class Ataxia {
 	
@@ -24,6 +25,7 @@ public class Ataxia {
 	private List<AtaxiaListener> listeners = new ArrayList<AtaxiaListener>();
 	
 	public Map<String, JSONObject> data = new HashMap<>();
+	public Map<String, ChatterBotSession> sesh = new HashMap<>();
 	public IDiscordClient client;
 
 	public static void main(String[] args){

@@ -2,7 +2,8 @@ package com.github.lyokofirelyte.Ataxia.message;
 
 public enum Channel {
 
-	TIKI_LOUNGE("199737300471513088");
+	TIKI_LOUNGE("199737300471513088"),
+	MINECRAFT("202230311273103362");
 	
 	Channel(String id){
 		this.id = id;
