@@ -1,8 +1,12 @@
 package com.github.lyokofirelyte.Ataxia.message;
 
-import sx.blah.discord.handle.obj.IUser;
+import java.io.File;
 
 import com.github.lyokofirelyte.Ataxia.Ataxia;
+import com.github.lyokofirelyte.Ataxia.LocalData;
+
+import lombok.SneakyThrows;
+import sx.blah.discord.handle.obj.IUser;
 
 public class MessageListener {
 	
@@ -28,6 +32,12 @@ public class MessageListener {
 		return "<@" + client.getID() + "> ";
 	}
 	
+	@SneakyThrows
+	@MessageHandler(aliases = { "play" })
+	public void a(){
+		
+	}
+	
 	public void onNotFound(){
 		main.sendMessage(ping() + "Command not found! Try !ax:help", Channel.TIKI_LOUNGE);
 	}
@@ -49,7 +59,7 @@ public class MessageListener {
 	
 	@MessageHandler(aliases = { "rel" }, usage = "!ax:rel", desc = "Reload")
 	public void onReload(){
-		if (client.getID().equals("129159003040120833")){
+		if (client.getID().contains(LocalData.OWNER_CHAT_ID.getData("keys", main).asString())){
 			main.sendMessage("I'll be right back!", Channel.TIKI_LOUNGE);
 			main.save();
 			System.exit(0);

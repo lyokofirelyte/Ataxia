@@ -92,6 +92,16 @@
        			<artifactId>maven-shade-plugin</artifactId>
        			<version>2.3</version>
        			<configuration>
+       				<archive>
+            			<manifest>
+                			<addClasspath>true</addClasspath>
+                	<!-- 	<classpathPrefix>lib</classpathPrefix> -->
+                	<!-- 	mainClass>test.org.Cliente</mainClass> -->
+           				</manifest>
+            			<manifestEntries>
+                			<Class-Path>lib/</Class-Path>
+           				 </manifestEntries>
+       				 </archive>
        			 	<artifactSet>
   						<excludes>
   							<exclude>com.github.lyokofirelyte:CB:*</exclude>

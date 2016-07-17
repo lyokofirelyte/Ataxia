@@ -8,7 +8,14 @@ import org.json.simple.JSONArray;
 public enum LocalData {
 
 	BOT_TOKEN("BOT_TOKEN"),
-	BOT_ID("BOT_ID");
+	BOT_ID("BOT_ID"),
+	OWNER_CHAT_ID("OWNER_CHAT_ID"),
+	BOT_CHAT_ID("BOT_CHAT_ID"),
+	MESSAGES("MESSAGES"),
+	VOICE_JOIN("VOICE_JOIN"),
+	VOICE_LEAVE("VOICE_LEAVE"),
+	VOICE_MOVE("VOICE_MOVE"),
+	TTS_KEY("TTS_KEY");
 	
 	LocalData(String name){
 		this.name = name;

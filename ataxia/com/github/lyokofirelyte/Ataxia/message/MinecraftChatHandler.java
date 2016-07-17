@@ -3,46 +3,50 @@ package com.github.lyokofirelyte.Ataxia.message;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.ServerSocket;
 import java.net.Socket;
-
-import lombok.SneakyThrows;
 
 import com.github.lyokofirelyte.Ataxia.Ataxia;
 
+import lombok.SneakyThrows;
+
 public class MinecraftChatHandler {
 
-	private ServerSocket listener;
+	private Socket socket;
+	private PrintWriter pw;
 	private Ataxia main;
 	
 	public MinecraftChatHandler(Ataxia i){
 		main = i;
 	}
 	
+	public void sendMessage(String message){
+		if (pw == null){
+			main.log("AAA");
+		}
+		pw.println(message);
+		pw.flush();
+	}
+	
 	@SneakyThrows
 	public void register(){
-		listener = new ServerSocket(25570);
 		new Thread(() -> {
-			while (true){
+			try {
+				socket = new Socket("144.76.184.51", 25579);
+				main.log("Reading from Minecraft...");
+				BufferedReader bis = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+				String text = "";
+				main.mc.pw = new PrintWriter(socket.getOutputStream());
 				try {
-					Socket minecraftServer = listener.accept();
-					main.log("Connection success, chats linked!");
-					PrintWriter pw = new PrintWriter(minecraftServer.getOutputStream());
-					pw.println("chat system Linked to discord!");
-					BufferedReader bis = new BufferedReader(new InputStreamReader(minecraftServer.getInputStream()));
-					new Thread(() -> {
-						String text = "";
-						try {
-							while ((text = bis.readLine()) != null){
-								
-							}
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}).start();
+					while ((text = bis.readLine()) != null){
+						main.log("Received " + text);
+						main.sendMessage(text, Channel.MINECRAFT);
+					}
+					main.log("End of stream");
 				} catch (Exception e){
-					main.log("There was an error linking the chats.");
+					main.log("End of Minecraft thread.");
 				}
+			} catch (Exception e){
+				main.log("Could not connect to Minecraft.");
 			}
 		}).start();
 	}

@@ -7,17 +7,19 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import lombok.SneakyThrows;
+import java.util.Timer;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import com.github.lyokofirelyte.Ataxia.message.Channel;
+import com.github.lyokofirelyte.Ataxia.message.MinecraftChatHandler;
+import com.google.code.chatterbotapi.ChatterBotSession;
+
+import lombok.SneakyThrows;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
-
-import com.github.lyokofirelyte.Ataxia.message.Channel;
-import com.google.code.chatterbotapi.ChatterBotSession;
+import sx.blah.discord.handle.obj.IPrivateChannel;
 
 public class Ataxia {
 	
@@ -27,14 +29,27 @@ public class Ataxia {
 	public Map<String, JSONObject> data = new HashMap<>();
 	public Map<String, ChatterBotSession> sesh = new HashMap<>();
 	public IDiscordClient client;
+	public MinecraftChatHandler mc;
 
 	public static void main(String[] args){
 		new Ataxia().start();
 	}
 	
+	public void ready(){
+		new Timer().scheduleAtFixedRate(new AutoAnnouncer(this), 0L, 1200000L * 2L);
+		mc = new MinecraftChatHandler(this);
+		mc.register();
+	}
+	
 	@SneakyThrows
 	public void sendMessage(String message, Channel channel){
 		client.getChannelByID(channel.getId()).sendMessage(message);
+	}
+	
+	@SneakyThrows
+	public void sendPrivateMessage(String userID, String message){
+	    IPrivateChannel channel = client.getOrCreatePMChannel(client.getUserByID(userID));
+	    channel.sendMessage(message);
 	}
 	
 	@SneakyThrows
