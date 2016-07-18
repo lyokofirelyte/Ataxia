@@ -16,14 +16,11 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/cmu_time_awb.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/cmu_us_kal.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/cmudict04.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/cmulex.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/cmutimelex.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/en_us.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/freetts.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/freetts-jsapi10.jar"/>
-	<classpathentry kind="lib" path="C:/Users/David/workspace/Ataxia/lib/mbrola.jar"/>
+	<classpathentry kind="src" output="target/test-classes" path="src/test/java">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

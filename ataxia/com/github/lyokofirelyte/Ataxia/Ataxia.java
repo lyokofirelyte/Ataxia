@@ -12,6 +12,7 @@ import java.util.Timer;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
+import com.github.lyokofirelyte.Ataxia.cooldown.Cooldown;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MinecraftChatHandler;
 import com.google.code.chatterbotapi.ChatterBotSession;
@@ -28,8 +29,10 @@ public class Ataxia {
 	
 	public Map<String, JSONObject> data = new HashMap<>();
 	public Map<String, ChatterBotSession> sesh = new HashMap<>();
+	public Map<String, Map<Integer, Long>> cooldowns = new HashMap<>();
 	public IDiscordClient client;
 	public MinecraftChatHandler mc;
+	public Cooldown cd;
 
 	public static void main(String[] args){
 		new Ataxia().start();
@@ -57,6 +60,7 @@ public class Ataxia {
 		log("Starting Ataxia v" + version);
 		load();
 		client = getClient(LocalData.BOT_TOKEN.getData("keys", this).asString());
+		cd = new Cooldown(this);
 		for (AtaxiaListener a : new AtaxiaListener[]{ 
 			new GenericListener(this)
 		}){

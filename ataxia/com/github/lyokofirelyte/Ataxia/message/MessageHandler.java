@@ -11,4 +11,5 @@ public @interface MessageHandler {
 	String[] aliases();
 	String desc() default "An Ataxia Command";
 	String usage() default "Usage tip here!";
+	Channel channel() default Channel.ANY;
 }

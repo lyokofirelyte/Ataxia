@@ -79,7 +79,11 @@ public class GenericListener implements AtaxiaListener {
 						MessageHandler mh = (MessageHandler) m.getAnnotation(MessageHandler.class);
 						for (String alias : mh.aliases()){
 							if (alias.equalsIgnoreCase(args[0].split(":")[1])){
-								m.invoke(ml);
+								if (mh.channel().equals(Channel.ANY) || mh.channel().getId().equals(e.getMessage().getChannel().getID())){
+									m.invoke(ml);
+								} else {
+									main.client.getChannelByID(e.getMessage().getChannel().getID()).sendMessage(ping(e.getMessage().getAuthor()) + " this command must be executed in #" + main.client.getChannelByID(mh.channel().getId()).getName());
+								}
 								return;
 							}
 						}
