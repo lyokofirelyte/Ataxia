@@ -15,6 +15,6 @@ public enum CooldownDuration {
 	private long duration;
 	
 	public long getDuration(long val){
-		return duration * val;
+		return System.currentTimeMillis() + (duration * val);
 	}
 }

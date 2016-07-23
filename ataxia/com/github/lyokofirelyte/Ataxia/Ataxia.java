@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Timer;
+import java.util.TimerTask;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -21,6 +23,7 @@ import lombok.SneakyThrows;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.handle.obj.IPrivateChannel;
+import sx.blah.discord.util.audio.AudioPlayer;
 
 public class Ataxia {
 	
@@ -29,7 +32,6 @@ public class Ataxia {
 	
 	public Map<String, JSONObject> data = new HashMap<>();
 	public Map<String, ChatterBotSession> sesh = new HashMap<>();
-	public Map<String, Map<Integer, Long>> cooldowns = new HashMap<>();
 	public IDiscordClient client;
 	public MinecraftChatHandler mc;
 	public Cooldown cd;
@@ -38,8 +40,9 @@ public class Ataxia {
 		new Ataxia().start();
 	}
 	
+	@SneakyThrows
 	public void ready(){
-		new Timer().scheduleAtFixedRate(new AutoAnnouncer(this), 0L, 1200000L * 2L);
+		//new Timer().scheduleAtFixedRate(new AutoAnnouncer(this), 0L, 1200000L * 2L);
 		mc = new MinecraftChatHandler(this);
 		mc.register();
 	}
@@ -47,6 +50,11 @@ public class Ataxia {
 	@SneakyThrows
 	public void sendMessage(String message, Channel channel){
 		client.getChannelByID(channel.getId()).sendMessage(message);
+	}
+	
+	@SneakyThrows
+	public void sendMessage(String message, String channel){
+		client.getChannelByID(channel).sendMessage(message);
 	}
 	
 	@SneakyThrows
@@ -60,7 +68,7 @@ public class Ataxia {
 		log("Starting Ataxia v" + version);
 		load();
 		client = getClient(LocalData.BOT_TOKEN.getData("keys", this).asString());
-		cd = new Cooldown(this);
+		cd = new Cooldown();
 		for (AtaxiaListener a : new AtaxiaListener[]{ 
 			new GenericListener(this)
 		}){
