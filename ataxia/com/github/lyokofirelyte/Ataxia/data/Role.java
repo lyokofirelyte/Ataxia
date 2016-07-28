@@ -1,7 +1,8 @@
-package com.github.lyokofirelyte.Ataxia.message;
+package com.github.lyokofirelyte.Ataxia.data;
 
 public enum Role {
 
+	OVERSEER("199675551961710593", 4),
 	DEVELOPER("204056639865618432", 3),
 	ADMIN("199663706647429120", 2),
 	MOD("199663792613752843", 1),

@@ -1,9 +1,11 @@
-package com.github.lyokofirelyte.Ataxia;
+package com.github.lyokofirelyte.Ataxia.data;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.json.simple.JSONArray;
+
+import com.github.lyokofirelyte.Ataxia.Ataxia;
 
 public enum LocalData {
 
@@ -15,7 +17,9 @@ public enum LocalData {
 	VOICE_JOIN("VOICE_JOIN"),
 	VOICE_LEAVE("VOICE_LEAVE"),
 	VOICE_MOVE("VOICE_MOVE"),
-	TTS_KEY("TTS_KEY");
+	TTS_KEY("TTS_KEY"),
+	AUTOGAME("AUTOGAME"),
+	BINDS("BINDS");
 	
 	LocalData(String name){
 		this.name = name;
@@ -37,6 +41,10 @@ public enum LocalData {
 		}
 		
 		return this;
+	}
+	
+	public boolean asBool(){
+		return asString().equals("true");
 	}
 	
 	public String asString(){

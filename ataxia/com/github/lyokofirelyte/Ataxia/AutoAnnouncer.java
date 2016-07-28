@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.TimerTask;
 
+import com.github.lyokofirelyte.Ataxia.data.LocalData;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 
 public class AutoAnnouncer extends TimerTask {
