@@ -2,6 +2,7 @@ package com.github.lyokofirelyte.Ataxia;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.InputStream;
@@ -31,6 +32,7 @@ import com.github.lyokofirelyte.Ataxia.listener.AtaxiaListener;
 import com.github.lyokofirelyte.Ataxia.listener.GenericListener;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MinecraftChatHandler;
+import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
 import com.google.code.chatterbotapi.ChatterBotSession;
 
 import lombok.SneakyThrows;
@@ -47,13 +49,17 @@ public class Ataxia {
 	
 	private List<AtaxiaListener> listeners = new ArrayList<AtaxiaListener>();
 	private long currentDelay = 0L;
+	private long startTime = 0;
 	private int processed = 0;
 	
+	public List<String> savedMessages = new ArrayList<String>();
 	public Map<String, JSONObject> data = new HashMap<>();
 	public Map<String, ChatterBotSession> sesh = new HashMap<>();
 	public Map<String, Bind> binds = new HashMap<>();
+	public List<String> audioListeners = new ArrayList<String>();
 	public IDiscordClient client;
 	public MinecraftChatHandler mc;
+	//public AudioListener al;
 	public Cooldown cd;
 
 	public static void main(String[] args){
@@ -62,9 +68,31 @@ public class Ataxia {
 	
 	@SneakyThrows
 	public void ready(){
-		//new Timer().scheduleAtFixedRate(new AutoAnnouncer(this), 0L, 1200000L * 2L);
-		mc = new MinecraftChatHandler(this);
-		mc.register();
+		//mc = new MinecraftChatHandler(this);
+		//mc.register();
+		//client.getVoiceChannelByID(Voice_Channel.TIKI_LOUNGE.getId()).join();
+		//al = new AudioListener(this);
+		//client.getGuildByID(GUILD_ID).getAudioManager().subscribeReceiver(al);
+		//new Timer().scheduleAtFixedRate(new ProcessTask(this), 0L, 400L);
+		sendMessage("All loaded up. (Took " + ((System.currentTimeMillis() - startTime) / 1000) + " seconds)", Channel.TIKI_LOUNGE);
+	}
+	
+	public File lastFileModified(String dir) {
+	    File fl = new File(dir);
+	    File[] files = fl.listFiles(new FileFilter() {          
+	        public boolean accept(File file) {
+	            return file.isFile();
+	        }
+	    });
+	    long lastMod = Long.MIN_VALUE;
+	    File choice = null;
+	    for (File file : files) {
+	        if (file.lastModified() > lastMod) {
+	            choice = file;
+	            lastMod = file.lastModified();
+	        }
+	    }
+	    return choice;
 	}
 	
 	@SneakyThrows
@@ -192,8 +220,13 @@ public class Ataxia {
 	    channel.sendMessage(message);
 	}
 	
+	public boolean listenFor(String id){
+		return audioListeners.contains(id);
+	}
+	
 	@SneakyThrows
 	public void start(){
+		startTime = System.currentTimeMillis();
 		log("Starting Ataxia v" + VERSION);
 		load();
 		client = getClient(LocalData.BOT_TOKEN.getData("keys", this).asString());
@@ -206,6 +239,7 @@ public class Ataxia {
 		}
 	}
 	
+	@SneakyThrows
 	private void load(){
 		for (String folder : new String[] { "./data/", "./data/users/" }){
 			JSONParser parser = new JSONParser();
@@ -230,6 +264,7 @@ public class Ataxia {
 	}
 	
 	public void save(){
+		client.getVoiceChannelByID(Voice_Channel.TIKI_LOUNGE.getId()).leave();
 		saveBindsToFile();
 		for (String player : data.keySet()){
 			try (FileWriter file = new FileWriter("./data/" + player + ".json")) {
@@ -244,6 +279,11 @@ public class Ataxia {
 	public void loadBindsFromFile(){
 		for (String user : data.keySet()){
 			if (user.startsWith("users/")){
+				if (data.get(user).containsKey(LocalData.LISTEN.toString())){
+					if (data.get(user).get(LocalData.LISTEN.toString()).equals("yes")){
+						audioListeners.add(user.replace("users/", ""));
+					}
+				}
 				if (data.get(user).containsKey(LocalData.BINDS.toString())){
 					user = user.replace("users/", "").replace(".json", "");
 					JSONArray array = (JSONArray) data.get("users/" + user).get(LocalData.BINDS.toString());
@@ -265,6 +305,20 @@ public class Ataxia {
 				array.add(activator + "%split%" + binds.get(userID).getBinds().get(activator));
 			}
 			data.get("users/" + userID).put("BINDS", array);
+		}
+		for (String id : audioListeners){
+			data.get("users/" + id).put("LISTEN", "yes");
+		}
+		List<String> toChange = new ArrayList<String>();
+		for (String user : data.keySet()){
+			if (user.startsWith("users/")){
+				if (!audioListeners.contains(user.replace("users/", ""))){
+					toChange.add(user);
+				}
+			}
+		}
+		for (String user : toChange){
+			data.get(user).remove("LISTEN");
 		}
 	}
 	

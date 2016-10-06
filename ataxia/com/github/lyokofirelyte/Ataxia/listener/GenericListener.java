@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 
 import org.apache.commons.io.FileUtils;
@@ -18,6 +16,7 @@ import com.github.lyokofirelyte.Ataxia.Ataxia;
 import com.github.lyokofirelyte.Ataxia.data.LocalData;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MessageHandler;
+import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
 import com.google.code.chatterbotapi.ChatterBot;
 import com.google.code.chatterbotapi.ChatterBotFactory;
 import com.google.code.chatterbotapi.ChatterBotSession;
@@ -35,6 +34,7 @@ import sx.blah.discord.handle.impl.events.UserVoiceChannelMoveEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
+import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.util.audio.AudioPlayer;
 
 public class GenericListener implements AtaxiaListener {
@@ -54,7 +54,7 @@ public class GenericListener implements AtaxiaListener {
 		main.sendMessage("All systems ready!", Channel.SERVER);
 		main.ready();
 	}
-	
+
 	@SneakyThrows
 	@EventSubscriber
 	public void onStatusChange(StatusChangeEvent e){
@@ -208,19 +208,6 @@ public class GenericListener implements AtaxiaListener {
 		if (e.getMessage().getChannel().getID().contains(Channel.MINECRAFT.getId())){
 			main.mc.sendMessage("chat" + "%split%" + e.getMessage().getAuthor().getName() + "%split%" + e.getMessage().toString());
 		}
-		/*try {
-			URL url = new URL(e.getMessage().toString());
-			String safeName = url.toString().replace(" ", "_").replaceAll("[^a-zA-Z0-9.-]", "_");
-			if (ImageIO.write(ImageIO.read(url), "png", new File("./data/" + safeName))){
-				e.getMessage().delete();
-				e.getMessage().getChannel().sendFile(new File("./data/" + safeName));
-				main.sendMessage("*image by " + e.getMessage().getAuthor().getName() + "*", e.getMessage().getChannel().getID());
-			} else {
-				main.log("Error with image!");
-			}
-		} catch (Exception ee){
-			ee.printStackTrace();
-		}*/
 	}
 
 	@SneakyThrows

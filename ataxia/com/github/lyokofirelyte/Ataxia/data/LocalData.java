@@ -19,7 +19,11 @@ public enum LocalData {
 	VOICE_MOVE("VOICE_MOVE"),
 	TTS_KEY("TTS_KEY"),
 	AUTOGAME("AUTOGAME"),
-	BINDS("BINDS");
+	BINDS("BINDS"),
+	LISTEN("LISTEN"),
+	API("API"),
+	IBM_USERNAME("IBM_USERNAME"),
+	IBM_PASSWORD("IBM_PASSWORD");
 	
 	LocalData(String name){
 		this.name = name;
