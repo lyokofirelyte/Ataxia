@@ -1,14 +1,19 @@
 package com.github.lyokofirelyte.Ataxia.listener;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +27,8 @@ import javax.sound.sampled.AudioSystem;
 import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.jsoup.Jsoup;
 
 import com.github.lyokofirelyte.Ataxia.Ataxia;
 import com.github.lyokofirelyte.Ataxia.cooldown.CooldownDuration;
@@ -31,6 +38,8 @@ import com.github.lyokofirelyte.Ataxia.data.Role;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MessageHandler;
 import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
+import com.jcabi.ssh.SSH;
+import com.jcabi.ssh.Shell;
 
 import lombok.SneakyThrows;
 import sx.blah.discord.handle.obj.IChannel;
@@ -81,6 +90,26 @@ public class MessageListener {
 		} else {
 			main.sendMessage(ping() + " You can use this command again in " + main.cd.minutesLeft(client.getID(), CooldownType.ATAXIA_AIRHORN) + " minutes.", channelID);
 		}
+	}
+	
+	@SneakyThrows
+	public JSONArray getHTMLAsArray(String urlToRead){
+		return (JSONArray) new JSONParser().parse(getHTMLString(urlToRead));
+	}
+	
+	@SneakyThrows
+	public String getHTMLString(String urlToRead){
+		StringBuilder result = new StringBuilder();
+	      URL url = new URL(urlToRead);
+	      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+	      conn.setRequestMethod("GET");
+	      BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+	      String line;
+	      while ((line = rd.readLine()) != null) {
+	         result.append(line);
+	      }
+	      rd.close();
+	      return result.toString();
 	}
 	
 	/*@MessageHandler(aliases = { "4chan", "4c" }, usage = "!ax:4c <board>", desc = "4chan latest lookup")
@@ -188,6 +217,34 @@ public class MessageListener {
 			}
 		} else {
 			main.sendMessage(ping() + " Global cooldown of 5 seconds on this command!", channelID);
+		}
+	}
+	
+	@MessageHandler(aliases = { "ssh" }, usage = "!ax:ssh", desc = "SSH Command", role = Role.DEVELOPER)
+	public void onSSH(){
+		try {
+			if (args.length == 2 && args[1].equals("-o")){
+				Shell shell = new SSH("worldscolli.de", 22, "wa", LocalData.SSH_PASSWORD.getData("keys", main).asString());
+				main.plain = new Shell.Plain(shell);
+				main.sendMessage("Connected!", channelID);
+			} else if (args.length == 2 && args[1].equals("-c")){
+				main.plain = null;
+				main.sendMessage("Closed!", channelID);
+			} else if (args.length > 1) {
+				String arg = "";
+				int i = 0;
+				for (String a : args){
+					i++;
+					if (i == 1){
+						continue;
+					}
+					arg += arg.equals("") ? a : " " + a;
+				}
+				String stdout = "Success:\n---\n```\n" + main.plain.exec(arg) + "\n```";
+				main.sendMessage(stdout, channelID);
+			}
+		} catch(Exception e){
+			e.printStackTrace();
 		}
 	}
 	
@@ -309,6 +366,24 @@ public class MessageListener {
 	@MessageHandler(aliases = { "vol" }, usage = "!ax:vol <float>", desc = "Volume Command (0 - 1)", role = Role.ADMIN)
 	public void onVol(){
 		AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).setVolume(Float.parseFloat(args[1]));
+	}
+	
+	@SneakyThrows
+	@MessageHandler(aliases = { "web" }, usage = "!ax:web <url>", desc = "View a Website", role = Role.MEMBER)
+	public void onWeb(){
+		if (main.cd.handleCooldown("system", CooldownType.ATAXIA_WHO, CooldownDuration.SECONDS, 10)){
+			if (args.length == 2){
+				String html = Jsoup.connect(args[1]).get().html();
+				FileUtils.writeStringToFile(new File("download.html"), html);
+				Process p = Runtime.getRuntime().exec("C:/Users/David/Desktop/Assets/phantomjs-2.1.1-windows/bin/phantomjs ./html/test2.js");
+				p.waitFor();
+				main.client.getChannelByID(channelID).sendFile(new File("image2.png"));
+			} else {
+				main.sendMessage(ping() + "you must provide a URL!", channelID);
+			}
+		} else {
+			main.sendMessage("Global cooldown of 10 seconds on this command!", channelID);
+		}
 	}
 
 	@MessageHandler(aliases = { "help" }, usage = "!ax:help", desc = "Ataxia help command")
@@ -558,6 +633,51 @@ public class MessageListener {
 				}
 			}
 		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	@SneakyThrows
+	@MessageHandler(aliases = { "shows" }, usage = "!ax:shows", desc = "Shows Registration Command")
+	public void onShows(){
+		String avatarUrl = client.getAvatarURL();
+		String clientName = client.getName();
+		String clientID = client.getID().toString();
+		String role = main.getHighestRole(client).toString();
+		
+		byte[] bytesOfMessage = clientID.getBytes("UTF-8");
+		MessageDigest md = MessageDigest.getInstance("MD5");
+		clientID = md.digest(bytesOfMessage).toString();
+		
+		JSONObject json = new JSONObject();
+		json.put("avatar", avatarUrl);
+		json.put("client_name", clientName);
+		json.put("client_id", clientID);
+		json.put("role", role);
+		
+		String url = "http://shows.worldscolli.de";  
+		URL obj = new URL(url);  
+		HttpURLConnection con = (HttpURLConnection) obj.openConnection();  
+		con.setRequestMethod("POST");  
+		con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");  
+		con.setRequestProperty("Content-Type", "application/json");  
+		con.setDoOutput(true);  
+		DataOutputStream wr = new DataOutputStream(con.getOutputStream());  
+		wr.writeBytes(json.toJSONString());  
+		wr.flush();  
+		wr.close();
+		  
+		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));  
+		String output;  
+		StringBuffer response = new StringBuffer();  
+		  
+		while ((output = in.readLine()) != null) {  
+			response.append(output);  
+		}  
+		in.close();  
+		    
+		System.out.println(response.toString());
+		
+		main.sendPrivateMessage(client.getID(), "Your shows link is http://shows.worldscolli.de?ref=" + clientID);
 	}
 	
 	@SneakyThrows

@@ -34,6 +34,9 @@ import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MinecraftChatHandler;
 import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
 import com.google.code.chatterbotapi.ChatterBotSession;
+import com.jcabi.ssh.SSH;
+import com.jcabi.ssh.Shell;
+import com.jcabi.ssh.Shell.Plain;
 
 import lombok.SneakyThrows;
 import sx.blah.discord.api.ClientBuilder;
@@ -61,6 +64,7 @@ public class Ataxia {
 	public MinecraftChatHandler mc;
 	//public AudioListener al;
 	public Cooldown cd;
+	public Plain plain;
 
 	public static void main(String[] args){
 		new Ataxia().start();
@@ -74,6 +78,8 @@ public class Ataxia {
 		//al = new AudioListener(this);
 		//client.getGuildByID(GUILD_ID).getAudioManager().subscribeReceiver(al);
 		//new Timer().scheduleAtFixedRate(new ProcessTask(this), 0L, 400L);
+		Shell shell = new SSH("worldscolli.de", 22, "wa", LocalData.SSH_PASSWORD.getData("keys", this).asString());
+		plain = new Shell.Plain(shell);
 		sendMessage("All loaded up. (Took " + ((System.currentTimeMillis() - startTime) / 1000) + " seconds)", Channel.TIKI_LOUNGE);
 	}
 	
