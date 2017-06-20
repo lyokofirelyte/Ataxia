@@ -78,8 +78,8 @@ public class Ataxia {
 		//al = new AudioListener(this);
 		//client.getGuildByID(GUILD_ID).getAudioManager().subscribeReceiver(al);
 		//new Timer().scheduleAtFixedRate(new ProcessTask(this), 0L, 400L);
-		Shell shell = new SSH("worldscolli.de", 22, "wa", LocalData.SSH_PASSWORD.getData("keys", this).asString());
-		plain = new Shell.Plain(shell);
+		//Shell shell = new SSH("worldscolli.de", 22, "wa", LocalData.SSH_PASSWORD.getData("keys", this).asString());
+		//plain = new Shell.Plain(shell);
 		sendMessage("All loaded up. (Took " + ((System.currentTimeMillis() - startTime) / 1000) + " seconds)", Channel.TIKI_LOUNGE);
 	}
 	
@@ -302,6 +302,14 @@ public class Ataxia {
 				}
 			}
 		}
+	}
+	
+	public String restOfString(String[] args, int start){
+		String fin = "";
+		for (int i = start; i < args.length; i++){
+			fin += fin.equals("") ? args[i] : " " + args[i];
+		}
+		return fin;
 	}
 	
 	public void saveBindsToFile(){

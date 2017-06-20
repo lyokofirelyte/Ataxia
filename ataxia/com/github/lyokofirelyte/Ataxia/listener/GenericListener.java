@@ -1,22 +1,14 @@
 package com.github.lyokofirelyte.Ataxia.listener;
 
-import java.io.File;
-import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.util.Locale;
 
-import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONObject;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.w3c.tidy.Tidy;
 
 import com.github.lyokofirelyte.Ataxia.Ataxia;
 import com.github.lyokofirelyte.Ataxia.data.LocalData;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MessageHandler;
-import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
 import com.google.code.chatterbotapi.ChatterBot;
 import com.google.code.chatterbotapi.ChatterBotFactory;
 import com.google.code.chatterbotapi.ChatterBotSession;
@@ -26,16 +18,12 @@ import lombok.SneakyThrows;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
-import sx.blah.discord.handle.impl.events.StatusChangeEvent;
-import sx.blah.discord.handle.impl.events.UserJoinEvent;
 import sx.blah.discord.handle.impl.events.UserVoiceChannelJoinEvent;
 import sx.blah.discord.handle.impl.events.UserVoiceChannelLeaveEvent;
 import sx.blah.discord.handle.impl.events.UserVoiceChannelMoveEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.handle.obj.IVoiceChannel;
-import sx.blah.discord.util.audio.AudioPlayer;
 
 public class GenericListener implements AtaxiaListener {
 
@@ -51,11 +39,11 @@ public class GenericListener implements AtaxiaListener {
 	
 	@EventSubscriber
 	public void onReady(ReadyEvent e){
-		main.sendMessage("All systems ready!", Channel.SERVER);
+		//main.sendMessage("All systems ready!", Channel.SERVER);
 		main.ready();
 	}
 
-	@SneakyThrows
+	/*@SneakyThrows
 	@EventSubscriber
 	public void onStatusChange(StatusChangeEvent e){
 		if (e.getNewStatus().getStatusMessage() != null && !e.getNewStatus().getStatusMessage().contains("NONE")){
@@ -89,14 +77,14 @@ public class GenericListener implements AtaxiaListener {
 				newChannel.changeBitrate(vc.getBitrate());
 				newChannel.changePosition(vc.getPosition() + 1);
 				e.getUser().moveToVoiceChannel(newChannel);
-			}*/
+			}
 		} else {
 			main.sendMessage(":eight_pointed_black_star: " + e.getUser().getName() + " has stopped playing " + e.getOldStatus().getStatusMessage(), Channel.SERVER);
 		}
-	}
+	}*/
 	
-	@SneakyThrows
-	@EventSubscriber
+	//@SneakyThrows
+	/*@EventSubscriber
 	public void onJoinServer(UserJoinEvent e){
 		main.sendMessage("@everyone Welcome <@" + e.getUser().getID() + "> to the server!", Channel.TIKI_LOUNGE);
 		File file = new File("data/welcome.mp3");
@@ -105,9 +93,9 @@ public class GenericListener implements AtaxiaListener {
 		main.doLater(() -> {
 			main.client.getVoiceChannelByID("199665266764939265").leave();
 		}, 3000L);
-	}
+	}*/
 	
-	@EventSubscriber
+	/*@EventSubscriber
 	public void onVoiceJoin(UserVoiceChannelJoinEvent e){
 		main.sendMessage(LocalData.VOICE_JOIN.getData("messages", main).asString().replace(
 			"%channel%", e.getChannel().getName()
@@ -145,7 +133,7 @@ public class GenericListener implements AtaxiaListener {
 		if (e.getOldChannel().getUsersHere().size() <= 0 && e.getOldChannel().getName().startsWith("#")){
 			e.getOldChannel().delete();
 		}
-	}
+	}*/
 	
 	@EventSubscriber @SneakyThrows
 	public void onMessage(MessageReceivedEvent e){
@@ -162,7 +150,7 @@ public class GenericListener implements AtaxiaListener {
 			for (int i = 0; i < x; i++){
 				tempMessage += tempMessage.equals("") ? tempArgs[i] : " " + tempArgs[i];
 			}
-			if (main.binds.get(e.getMessage().getAuthor().getID()).hasBind(tempMessage)){
+			if (main.binds.containsKey(e.getMessage().getAuthor().getID()) && main.binds.get(e.getMessage().getAuthor().getID()).hasBind(tempMessage)){
 				message = main.binds.get(e.getMessage().getAuthor().getID()).getBind(tempMessage);
 				try {
 					String args = e.getMessage().toString().substring(tempMessage.length());
@@ -213,7 +201,7 @@ public class GenericListener implements AtaxiaListener {
 	@SneakyThrows
 	private void handleChat(IMessage message){
 		ChatterBotFactory factory = new ChatterBotFactory();
-		ChatterBot bot = factory.create(ChatterBotType.CLEVERBOT);
+		ChatterBot bot = factory.create(ChatterBotType.CLEVERBOT, LocalData.CLEVER_API.getData("keys", main).asString());
 		if (!main.sesh.containsKey(message.getAuthor().getID())){
 			main.sesh.put(message.getAuthor().getID(), bot.createSession(Locale.ENGLISH));
 		}

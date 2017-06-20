@@ -6,7 +6,8 @@ public enum CooldownType {
 	ATAXIA_AIRHORN(1),
 	ATAXIA_TRIPLE(2),
 	ATAXIA_4C(3),
-	ATAXIA_WHO(4);
+	ATAXIA_WHO(4),
+	ATAXIA_SHOWS(5);
 	
 	CooldownType(int type){
 		this.type = type;

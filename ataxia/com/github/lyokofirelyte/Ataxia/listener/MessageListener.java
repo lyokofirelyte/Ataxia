@@ -1,26 +1,35 @@
 package com.github.lyokofirelyte.Ataxia.listener;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 
@@ -28,7 +37,9 @@ import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
-import org.jsoup.Jsoup;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.tidy.Tidy;
 
 import com.github.lyokofirelyte.Ataxia.Ataxia;
 import com.github.lyokofirelyte.Ataxia.cooldown.CooldownDuration;
@@ -38,13 +49,15 @@ import com.github.lyokofirelyte.Ataxia.data.Role;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MessageHandler;
 import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
-import com.jcabi.ssh.SSH;
-import com.jcabi.ssh.Shell;
 
 import lombok.SneakyThrows;
 import sx.blah.discord.handle.obj.IChannel;
+import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
+import sx.blah.discord.util.Image;
+import sx.blah.discord.util.RequestBuffer;
+import sx.blah.discord.util.RequestBuffer.RequestFuture;
 import sx.blah.discord.util.audio.AudioPlayer;
 
 public class MessageListener {
@@ -82,7 +95,7 @@ public class MessageListener {
 				AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).queue(file);
 			} catch (Exception e) {
 				e.printStackTrace();
-				main.sendMessage("Error playing airhorn! :3", channelID);
+				main.sendMessage("Error playing airhorn!", channelID);
 			}
 			main.doLater(() -> {
 				main.client.getVoiceChannelByID("199665266764939265").leave();
@@ -110,6 +123,39 @@ public class MessageListener {
 	      }
 	      rd.close();
 	      return result.toString();
+	}
+	
+	@SneakyThrows
+	@MessageHandler(aliases = { "playing" }, usage = "!ax:playing <game>", desc = "Who's playing what?")
+	public void onPlaying(){
+		String fin = "";
+		if (args.length == 2){
+			for (IUser u : main.client.getUsers()){
+				if (u.getPresence().getPlayingText().isPresent() && u.getPresence().getPlayingText().get().toLowerCase().contains(args[1].toLowerCase())){
+					fin += fin.equals("") ? u.getName() : ", " + u.getName();
+				}
+			}
+			File theFile = new File("temp.png");
+			//if (!theFile.exists()){
+				String search = "http://www.bing.com/images/search?q=" + args[1] + "%20game%20logo" + "&go=Search&qs=n&form=QBILPG&pq=cookies&sc=8-7&sp=-1&sk=";
+				InputStream input = new URL(search).openStream();
+				Document document = new Tidy().parseDOM(input, null);
+				NodeList imgs = document.getElementsByTagName("img");
+				for (int i = 2; i < imgs.getLength(); i++) {
+				    String picture = imgs.item(i).getAttributes().getNamedItem("src").getNodeValue();
+				    if (!picture.contains("data:image")){
+				    	FileUtils.copyURLToFile(new URL((picture.contains("http") ? "" : "http://") + picture), theFile);
+				    	break;
+				    }
+				}
+			//}
+			main.client.getChannelByID(Channel.TIKI_LOUNGE.getId()).sendFile(theFile);
+			main.sendMessage("Users playing " + args[1] + ":", channelID);
+			main.sendMessage("```\n" + (fin.equals("") ? "Literally nobody." : fin) + "\nThat's " + (fin.equals("") ? "0" : fin.split(", ").length) + " / " + main.client.getUsers().size() + "!\n```", channelID);
+			theFile.delete();
+		} else {
+			main.sendMessage("Usage: !ax:playing <name>", channelID);
+		}
 	}
 	
 	/*@MessageHandler(aliases = { "4chan", "4c" }, usage = "!ax:4c <board>", desc = "4chan latest lookup")
@@ -219,8 +265,16 @@ public class MessageListener {
 			main.sendMessage(ping() + " Global cooldown of 5 seconds on this command!", channelID);
 		}
 	}
+
+	@MessageHandler(aliases = { "avatar" }, usage = "!ax:avatar", desc = "Bot Avatar Command", role = Role.DEVELOPER)
+	public void onAvatar(){
+		main.sendMessage("Attemping to change avatar as " + args[1], channelID);
+        Image image = Image.forUrl(args[1], args[2]);
+        main.client.changeAvatar(image);
+		main.sendMessage("Complete.", channelID);
+	}
 	
-	@MessageHandler(aliases = { "ssh" }, usage = "!ax:ssh", desc = "SSH Command", role = Role.DEVELOPER)
+	/*@MessageHandler(aliases = { "ssh" }, usage = "!ax:ssh", desc = "SSH Command", role = Role.DEVELOPER)
 	public void onSSH(){
 		try {
 			if (args.length == 2 && args[1].equals("-o")){
@@ -246,9 +300,9 @@ public class MessageListener {
 		} catch(Exception e){
 			e.printStackTrace();
 		}
-	}
+	}*/
 	
-	@SneakyThrows
+	/*@SneakyThrows
 	@MessageHandler(aliases = { "listen" }, usage = "!ax:listen", desc = "Listen Toggle")
 	public void onListen(){
 		if (main.listenFor(client.getID())){
@@ -258,7 +312,7 @@ public class MessageListener {
 			main.audioListeners.add(client.getID());
 			main.sendMessage("Listening to you now, " + ping(), channelID);
 		}
-	}
+	}*/
 	
 	@MessageHandler(channel = Channel.MOVIES, aliases = { "imdb" }, usage = "!ax:imdb <search>, !ax:imdb -a <search>", desc = "IMDB Lookup")
 	public void onIMDB(){
@@ -323,12 +377,12 @@ public class MessageListener {
 	}
 	
 	@SneakyThrows
-	@MessageHandler(aliases = { "play" }, noHelp = true, role = Role.MEMBER, channel = Channel.TIKI_LOUNGE)
+	@MessageHandler(aliases = { "play" }, usage = "!ax:play [-link, -search] <query>", desc="Play Audio", role = Role.MEMBER, channel = Channel.MUSIC)
 	public void onPlay(){
 		if (args[1].equals("-stop")){
 			AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).skip();
 			main.client.getVoiceChannelByID("199665266764939265").leave();
-		} else if (args[1].equals("-link") && args.length == 3){
+		} else if ((args[1].equals("-link") || args[1].equals("-search")) && args.length >= 3){
 			try {
 				AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).clear();
 				for (String f : new File(".").list()){
@@ -336,7 +390,12 @@ public class MessageListener {
 						new File(f).delete();
 					}
 				}
-				Process p = Runtime.getRuntime().exec("youtube-dl --extract-audio --audio-format mp3 " + args[2]);
+				Process p = null;
+				if (args[1].equals("-link")){
+					p = Runtime.getRuntime().exec("youtube-dl --extract-audio --audio-format mp3 " + args[2]);
+				} else {
+					p = Runtime.getRuntime().exec("youtube-dl ytsearch:\"" +  main.restOfString(args, 2) + "\" --extract-audio --audio-format mp3");
+				}
 				main.sendMessage(ping() + " Downloading!", channelID);
 				p.waitFor();
 				main.sendMessage(ping() + " Playing!", channelID);
@@ -368,7 +427,7 @@ public class MessageListener {
 		AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).setVolume(Float.parseFloat(args[1]));
 	}
 	
-	@SneakyThrows
+	/*@SneakyThrows
 	@MessageHandler(aliases = { "web" }, usage = "!ax:web <url>", desc = "View a Website", role = Role.MEMBER)
 	public void onWeb(){
 		if (main.cd.handleCooldown("system", CooldownType.ATAXIA_WHO, CooldownDuration.SECONDS, 10)){
@@ -384,7 +443,7 @@ public class MessageListener {
 		} else {
 			main.sendMessage("Global cooldown of 10 seconds on this command!", channelID);
 		}
-	}
+	}*/
 
 	@MessageHandler(aliases = { "help" }, usage = "!ax:help", desc = "Ataxia help command")
 	public void onHelp(){
@@ -407,11 +466,11 @@ public class MessageListener {
 		main.sendMessage("```xl\nAtaxia Commands (usage, description, required channel, role needed)```\n" + help, main.client.getChannelByID(channelID).getID());
 	}
 	
-	@MessageHandler(aliases = { "autogame" }, usage = "!ax:autogame", desc = "Toggle your autogame status")
+	@MessageHandler(aliases = { "autogame" }, usage = "!ax:autogame", desc = "Toggle your autogame status", noHelp = true)
 	public void onAutoGame(){
-		boolean isAuto = LocalData.AUTOGAME.getData("users/" + client.getID(), main).asBool();
-		LocalData.AUTOGAME.setData("users/" + client.getID(), !isAuto + "", main);
-		main.sendPrivateMessage(client.getID(), "Your autogame preference is now set to: " + !isAuto + ".");
+		// boolean isAuto = LocalData.AUTOGAME.getData("users/" + client.getID(), main).asBool();
+		// LocalData.AUTOGAME.setData("users/" + client.getID(), !isAuto + "", main);
+		// main.sendPrivateMessage(client.getID(), "Your autogame preference is now set to: " + !isAuto + ".");
 	}
 	
 	@SneakyThrows
@@ -431,15 +490,16 @@ public class MessageListener {
 		}
 	}
 	
-	@MessageHandler(role = Role.ADMIN, aliases = "channel", usage = "!ax:channel -help", desc = "Channel Command")
+	/*@MessageHandler(role = Role.ADMIN, aliases = "channel", usage = "!ax:channel -help", desc = "Channel Command")
 	public void onChannel(){
 		
-	}
+	}*/
 	
 	@SneakyThrows
 	@MessageHandler(aliases = { "who" }, usage = "!ax:who", desc = "Whois command")
 	public void onWho(){
 		if (main.cd.handleCooldown("system", CooldownType.ATAXIA_WHO, CooldownDuration.SECONDS, 6)){
+			main.sendMessage("This may take awhile...", channelID);
 			List<String> html = Files.readAllLines(Paths.get("./html/site/src", "template.html"));
 			List<String> newHTML = new ArrayList<String>();
 			List<IUser> users = new ArrayList<IUser>();
@@ -482,7 +542,7 @@ public class MessageListener {
 			toReplace = "";
 			newHTML = new ArrayList<String>();
 			for (IUser u : users){
-				toReplace += "section.content > table div.avatar#id_" + u.getID() + "{ background-image: url('" + (u.getAvatarURL().contains("null") ? "default_avatar.png" : u.getAvatarURL()) + "'); }";
+				toReplace += "section.content > table div.avatar#id_" + u.getID() + "{ background-image: url('" + (u.getAvatarURL().contains("null") ? "default_avatar.png" : u.getAvatarURL().replace(".webp", ".png")) + "'); }";
 			}
 			for (String s : css){
 				newHTML.add(s.contains("%replace%") ? toReplace : s);
@@ -551,7 +611,7 @@ public class MessageListener {
 	}
 	
 	@SneakyThrows
-	@MessageHandler(aliases = { "pic" }, usage = "!ax:pic <user>", desc = "Profile Picture Command")
+	@MessageHandler(aliases = { "pic" }, usage = "!ax:pic <user> [as <ext>]", desc = "Profile Picture Command")
 	public void onPic(){
 		if (args.length >= 2){
 			String argz = "";
@@ -562,11 +622,39 @@ public class MessageListener {
 			boolean found = false;
 			for (IUser u : client.getClient().getChannelByID(channelID).getUsersHere()){
 				for (String q : query){
-					if (q.equals("*") || u.getName().toLowerCase().contains(q.toLowerCase())){
+					if (!q.equals("as") && (q.equals("*") || u.getName().toLowerCase().contains(q.toLowerCase()))){
 						if (!u.getAvatarURL().contains("null")){
-							main.addToDiscordQueue(() -> {
+							if (u.getAvatarURL().endsWith(".gif")){
 								main.sendMessage(u.getAvatarURL(), channelID);
-							});
+								continue;
+							}
+							 final HttpURLConnection connection = (HttpURLConnection) new URL(u.getAvatarURL().replace(".webp", ".png")).openConnection();
+							 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) " + "AppleWebKit/537.31 (KHTML, like" + " " + "Gecko)" + " Chrome/26.0.1410.65 " + "Safari/537.31");
+							 BufferedImage img = ImageIO.read(connection.getInputStream());
+							 if (args.length >= 4 && args[3].equals("fucc")){
+								 img = colorImage(img);
+								 args[3] = "jpg";
+							 }
+							 ImageIO.write(img, "png", new File(u.getID() + ".png"));
+							 if (args.length >= 4 && args[2].equalsIgnoreCase("as")){
+								 File inputFile = new File(u.getID() + ".png");
+								 File outputFile = new File(u.getID() + "." + args[3].toLowerCase());
+								 outputFile.createNewFile();
+								 try (InputStream is = new FileInputStream(inputFile)) {
+								     BufferedImage image = ImageIO.read(is);
+								     try (OutputStream os = new FileOutputStream(outputFile)) {
+								         ImageIO.write(image, args[3].toLowerCase(), os);
+								     } catch (Exception exp) {
+								         exp.printStackTrace();
+								     }
+								 } catch (Exception exp) {
+								     exp.printStackTrace();
+								 }
+								main.client.getGuildByID(Ataxia.GUILD_ID).getChannelByID(Channel.TIKI_LOUNGE.getId()).sendFile(new File(u.getID() + "." + args[3].toLowerCase()));
+								return;
+							 } else if (!args[2].equalsIgnoreCase("as")) {
+								main.client.getGuildByID(Ataxia.GUILD_ID).getChannelByID(Channel.TIKI_LOUNGE.getId()).sendFile(new File(u.getID() + ".png"));
+							 }
 						} else {
 							main.client.getGuildByID(Ataxia.GUILD_ID).getChannelByID(Channel.TIKI_LOUNGE.getId()).sendFile(new File("./html/default_avatar.png"));
 						}
@@ -587,9 +675,31 @@ public class MessageListener {
 		}
 	}
 	
+   private static BufferedImage colorImage(BufferedImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        WritableRaster raster = image.getRaster();
+        Random rand = new Random();
+
+        for (int xx = 0; xx < width; xx++) {
+            for (int yy = 0; yy < height; yy++) {
+            	int yo = rand.nextInt(100);
+            	int yo2 = rand.nextInt(100);
+            	int yo3 = rand.nextInt(100);
+            	Color originalColor = new Color(image.getRGB(xx, yy), true);
+                int[] pixels = raster.getPixel(xx, yy, (int[]) null);
+                pixels[0] = (originalColor.getRed() + yo) <= 255 ? originalColor.getRed() + yo : originalColor.getRed() - yo;
+                pixels[1] = (originalColor.getGreen() + yo2) <= 255 ? originalColor.getGreen() + yo2 : originalColor.getGreen() - yo2;
+                pixels[2] = (originalColor.getBlue() + yo3) <= 255 ? originalColor.getBlue() + yo3 : originalColor.getBlue() - yo3;
+                raster.setPixel(xx, yy, pixels);
+            }
+        }
+        return image;
+    }
+	
 	@MessageHandler(aliases = { "del" }, usage = "!ax:del <amount> [-s (skip)]", desc = "Delete Command", role = Role.ADMIN)
 	public void onDel(){
-		if (args.length >= 1){
+		if (args.length >= 2){
 			if (args[1].equals("-r")){
 				main.sendMessage("RESTORED MESSAGES: \n\n", channelID);
 				for (String msg : main.savedMessages){
@@ -635,49 +745,75 @@ public class MessageListener {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	@SneakyThrows
-	@MessageHandler(aliases = { "shows" }, usage = "!ax:shows", desc = "Shows Registration Command")
+	@MessageHandler(aliases = { "shows" }, usage = "!ax:shows", desc = "Shows Registration Command", role = Role.MEMBER)
 	public void onShows(){
-		String avatarUrl = client.getAvatarURL();
-		String clientName = client.getName();
-		String clientID = client.getID().toString();
-		String role = main.getHighestRole(client).toString();
-		
-		byte[] bytesOfMessage = clientID.getBytes("UTF-8");
-		MessageDigest md = MessageDigest.getInstance("MD5");
-		clientID = md.digest(bytesOfMessage).toString();
-		
-		JSONObject json = new JSONObject();
-		json.put("avatar", avatarUrl);
-		json.put("client_name", clientName);
-		json.put("client_id", clientID);
-		json.put("role", role);
-		
-		String url = "http://shows.worldscolli.de";  
-		URL obj = new URL(url);  
-		HttpURLConnection con = (HttpURLConnection) obj.openConnection();  
-		con.setRequestMethod("POST");  
-		con.setRequestProperty("Accept-Language", "en-US,en;q=0.5");  
-		con.setRequestProperty("Content-Type", "application/json");  
-		con.setDoOutput(true);  
-		DataOutputStream wr = new DataOutputStream(con.getOutputStream());  
-		wr.writeBytes(json.toJSONString());  
-		wr.flush();  
-		wr.close();
-		  
-		BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));  
-		String output;  
-		StringBuffer response = new StringBuffer();  
-		  
-		while ((output = in.readLine()) != null) {  
-			response.append(output);  
-		}  
-		in.close();  
-		    
-		System.out.println(response.toString());
-		
-		main.sendPrivateMessage(client.getID(), "Your shows link is http://shows.worldscolli.de?ref=" + clientID);
+		if (main.cd.handleCooldown(client.getID(), CooldownType.ATAXIA_SHOWS, CooldownDuration.SECONDS, 3)){
+			try {
+				String avatarUrl = client.getAvatarURL().replace(".webp", ".png");
+				String clientName = client.getName();
+				String clientID = client.getID().toString();
+				String role = main.getHighestRole(client).toString();
+				String ref = clientID + "_" + (10000 + new Random().nextInt(100000));
+				
+				String url = "http://shows.tikilounge.co";  
+				URL obj = new URL(url);
+				URLConnection con = obj.openConnection();
+			    // activate the output
+			    con.setDoOutput(true);
+			    PrintStream ps = new PrintStream(con.getOutputStream());
+			    // send your parameters to your site
+			    ps.print("avatar=" + avatarUrl);
+			    ps.print("&client_name=" + clientName);
+			    ps.print("&client_id=" + clientID);
+			    ps.print("&role=" + role);
+			    ps.print("&ref=" + ref);
+			    
+			    if (args.length >= 2){
+					if (args[1].equals("-reset")){
+						ps.print("&reset=true");
+					}
+			    }
+			    BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+			    String line = null;
+			    
+			    while ((line = in.readLine()) != null) {
+			    	System.out.println(line);
+			    }
+			    ps.close();
+				
+				main.sendPrivateMessage(client.getID(), "Your shows link is http://shows.tikilounge.co?ref=" + ref);
+				if (args.length >= 2 && args[1].equals("-reset")){
+					main.sendPrivateMessage(client.getID(), "You will need to log out of the website first!");
+				}
+			} catch (Exception e){
+				e.printStackTrace();
+				main.sendPrivateMessage(client.getID(), "There was an error. The shows site is probably down.");
+			}
+		} else {
+			main.sendPrivateMessage(client.getID(), "Please wait at least 3 seconds between each command.");
+		}
+	}
+	
+	@SneakyThrows
+	@MessageHandler(aliases = { "wave", "testf" }, usage = "!ax:wave", desc = "Fun!", noHelp = true, role = Role.DEVELOPER)
+	public void onWave(){
+		new Thread(() -> {
+			List<IRole> toDelete = new ArrayList<>();
+
+			for (IRole r : client.getClient().getGuildByID(main.GUILD_ID).getRoles()){
+				if (r.getName().matches("[0-9]+")){
+					toDelete.add(r);
+				}
+			}
+			
+			for (IRole r : toDelete){
+				 RequestFuture<Void> f = RequestBuffer.request(() -> {
+					 r.delete();
+				 });
+				 while (!f.isDone()){}
+			}
+		}).start();
 	}
 	
 	@SneakyThrows
