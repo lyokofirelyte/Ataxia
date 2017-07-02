@@ -1,8 +1,10 @@
 package com.github.lyokofirelyte.Ataxia;
 
 import java.io.BufferedReader;
+import java.io.Console;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.InputStream;
@@ -16,9 +18,13 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioSystem;
+
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.tritonus.share.sampled.file.TAudioFileFormat;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.tidy.Tidy;
@@ -34,16 +40,20 @@ import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MinecraftChatHandler;
 import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
 import com.google.code.chatterbotapi.ChatterBotSession;
-import com.jcabi.ssh.SSH;
-import com.jcabi.ssh.Shell;
 import com.jcabi.ssh.Shell.Plain;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 
 import lombok.SneakyThrows;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
+import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IPrivateChannel;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
+import sx.blah.discord.util.RequestBuffer;
+import sx.blah.discord.util.audio.AudioPlayer;
 
 public class Ataxia {
 	
@@ -65,9 +75,18 @@ public class Ataxia {
 	//public AudioListener al;
 	public Cooldown cd;
 	public Plain plain;
+	public IMessage queueMessage;
+	
+
+	public Map<String, String> queue = new HashMap<>();
+	public Map<Integer, String> queueOrder = new HashMap<>();
 
 	public static void main(String[] args){
-		new Ataxia().start();
+		if (args.length > 0 && args[0].equalsIgnoreCase("sftp")){
+			new Ataxia().sftp("ataxia_sftp.jar");
+		} else {
+			new Ataxia().start();
+		}
 	}
 	
 	@SneakyThrows
@@ -81,6 +100,16 @@ public class Ataxia {
 		//Shell shell = new SSH("worldscolli.de", 22, "wa", LocalData.SSH_PASSWORD.getData("keys", this).asString());
 		//plain = new Shell.Plain(shell);
 		sendMessage("All loaded up. (Took " + ((System.currentTimeMillis() - startTime) / 1000) + " seconds)", Channel.TIKI_LOUNGE);
+		queueMessage = sendMessage("```xl\nAtaxia Music Queue (Updated Automatically)```\n" + 
+		"**!ax:queue <song name>** `!ax:queue fireflies owl city`\n" +
+		"**!ax:queue <direct link>** `!ax:queue https://www.youtube.com/watch?v=QP5fKMme2NU`\n" +
+		"**!ax:queue remove**\n```xl\nNow Playing: [ nothing ]```\n%q%", Channel.MUSIC.getId());
+		String extra = "";
+		for (int i = 0; i < 10; i++){
+			extra += "**" + (i < 10 ? "0" + i : i) + "** `Song, User, Status`\n\n";
+		}
+		extra += "\n```xl\nQueue Idle```";
+		queueMessage.edit(queueMessage.getContent().replace("%q%", extra));
 	}
 	
 	public File lastFileModified(String dir) {
@@ -131,6 +160,55 @@ public class Ataxia {
         log(toReturn);
         return toReturn;
 	}
+	
+	/**
+	 * @author https://stackoverflow.com/questions/14830146/how-to-transfer-a-file-through-sftp-in-java
+	 * @param fileName
+	 */
+	@SneakyThrows
+	public void sftp(String fileName) {
+		Console console = System.console();
+        String SFTPHOST = "trey.tikilounge.co";
+        int SFTPPORT = 22;
+        String SFTPUSER = console.readLine("Username: ");
+        char[] SFTPPASS = console.readPassword("Password: ");
+        String SFTPWORKINGDIR = "/home/david/ataxia";
+        Session session = null;
+        com.jcraft.jsch.Channel channel = null;
+        ChannelSftp channelSftp = null;
+        String pass = "";
+        for (char c : SFTPPASS){
+        	pass += (c + "");
+        }
+        try {
+            JSch jsch = new JSch();
+            session = jsch.getSession(SFTPUSER, SFTPHOST, SFTPPORT);
+            session.setPassword(pass);
+            java.util.Properties config = new java.util.Properties();
+            config.put("StrictHostKeyChecking", "no");
+            session.setConfig(config);
+            session.connect();
+            System.out.println("Host connected.");
+            channel = session.openChannel("sftp");
+            channel.connect();
+            System.out.println("sftp channel opened and connected.");
+            channelSftp = (ChannelSftp) channel;
+            channelSftp.cd(SFTPWORKINGDIR);
+            File f = new File(fileName);
+            channelSftp.put(new FileInputStream(f), f.getName());
+            System.out.println("File transfered successfully to host.");
+        } catch (Exception ex) {
+             System.out.println("Exception found while tranfer the response.");
+        }
+        finally{
+            channelSftp.exit();
+            System.out.println("sftp Channel exited.");
+            channel.disconnect();
+            System.out.println("Channel disconnected.");
+            session.disconnect();
+            System.out.println("Host Session disconnected.");
+        }
+    }  
 	
 	@SneakyThrows
 	public JSONObject getHTML(String urlToRead){
@@ -194,12 +272,14 @@ public class Ataxia {
 		processed++;
 	}
 	
-	public void repeat(Runnable run, long initialDelay, long cycle){
-		new Timer().scheduleAtFixedRate(new TimerTask(){
+	public Timer repeat(Runnable run, long initialDelay, long cycle){
+		Timer t = new Timer();
+		t.scheduleAtFixedRate(new TimerTask(){
 			public void run(){
 				run.run();
 			}
 		}, initialDelay, cycle);
+		return t;
 	}
 	
 	public void doLater(Runnable run, long mills){
@@ -216,8 +296,8 @@ public class Ataxia {
 	}
 	
 	@SneakyThrows
-	public void sendMessage(String message, String channel){
-		client.getChannelByID(channel).sendMessage(message);
+	public IMessage sendMessage(String message, String channel){
+		return client.getChannelByID(channel).sendMessage(message);
 	}
 	
 	@SneakyThrows
@@ -280,6 +360,21 @@ public class Ataxia {
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	@SneakyThrows
+	public String[] getAudioDuration(File file){
+	    AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
+	    if (fileFormat instanceof TAudioFileFormat) {
+	        Map<?, ?> properties = ((TAudioFileFormat) fileFormat).properties();
+	        String key = "duration";
+	        Long microseconds = (Long) properties.get(key);
+	        int mili = (int) (microseconds / 1000);
+	        int sec = (mili / 1000) % 60;
+	        int min = (mili / 1000) / 60;
+	        return new String[]{min + ":" + sec, mili + ""};
+	    }
+	    return new String[]{ "N/A", "0" };
 	}
 	
 	public void loadBindsFromFile(){

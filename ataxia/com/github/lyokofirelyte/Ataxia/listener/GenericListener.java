@@ -18,9 +18,6 @@ import lombok.SneakyThrows;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
-import sx.blah.discord.handle.impl.events.UserVoiceChannelJoinEvent;
-import sx.blah.discord.handle.impl.events.UserVoiceChannelLeaveEvent;
-import sx.blah.discord.handle.impl.events.UserVoiceChannelMoveEvent;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
@@ -135,7 +132,7 @@ public class GenericListener implements AtaxiaListener {
 		}
 	}*/
 	
-	@EventSubscriber @SneakyThrows
+	@EventSubscriber
 	public void onMessage(MessageReceivedEvent e){
 		String message = e.getMessage().toString();
 		String userID = e.getMessage().getAuthor().getID();
@@ -161,7 +158,7 @@ public class GenericListener implements AtaxiaListener {
 		}
 		if (message.startsWith("!ax:")){
 			String[] args = message.split(" ");
-			MessageListener ml = new MessageListener(main, e.getMessage().getAuthor(), message.split(" "), e.getMessage().getChannel().getID());
+			MessageListener ml = new MessageListener(main, e.getMessage().getAuthor(), message.split(" "), e.getMessage().getChannel().getID(), e.getMessage());
 			for (Method m : ml.getClass().getMethods()){
 				if (m.getAnnotation(MessageHandler.class) != null){
 					MessageHandler mh = (MessageHandler) m.getAnnotation(MessageHandler.class);
@@ -176,7 +173,11 @@ public class GenericListener implements AtaxiaListener {
 									}
 								}
 								if (perms){
-									m.invoke(ml);
+									try {
+										m.invoke(ml);
+									} catch (Exception ee){
+										ee.printStackTrace();
+									}
 								} else {
 									main.sendMessage(ping(e.getMessage().getAuthor()) + " You don't have the correct role for that!", e.getMessage().getChannel().getID());
 									return;
@@ -195,6 +196,9 @@ public class GenericListener implements AtaxiaListener {
 		}
 		if (e.getMessage().getChannel().getID().contains(Channel.MINECRAFT.getId())){
 			main.mc.sendMessage("chat" + "%split%" + e.getMessage().getAuthor().getName() + "%split%" + e.getMessage().toString());
+		}
+		if (e.getChannel().getID().equals(Channel.MUSIC.getId())){
+			e.getMessage().delete();
 		}
 	}
 

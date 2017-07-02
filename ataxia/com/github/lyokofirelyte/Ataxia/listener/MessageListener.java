@@ -21,11 +21,11 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Timer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,6 +37,9 @@ import org.apache.commons.io.FileUtils;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 import org.w3c.tidy.Tidy;
@@ -48,13 +51,19 @@ import com.github.lyokofirelyte.Ataxia.data.LocalData;
 import com.github.lyokofirelyte.Ataxia.data.Role;
 import com.github.lyokofirelyte.Ataxia.message.Channel;
 import com.github.lyokofirelyte.Ataxia.message.MessageHandler;
+import com.github.lyokofirelyte.Ataxia.message.QueueMessage;
 import com.github.lyokofirelyte.Ataxia.message.Voice_Channel;
 
 import lombok.SneakyThrows;
+import sx.blah.discord.api.internal.json.objects.EmbedObject;
+import sx.blah.discord.handle.impl.obj.Embed;
 import sx.blah.discord.handle.obj.IChannel;
+import sx.blah.discord.handle.obj.IEmbed;
+import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
+import sx.blah.discord.util.EmbedBuilder;
 import sx.blah.discord.util.Image;
 import sx.blah.discord.util.RequestBuffer;
 import sx.blah.discord.util.RequestBuffer.RequestFuture;
@@ -66,10 +75,12 @@ public class MessageListener {
 	private IUser client;
 	private String[] args;
 	private String channelID;
-	
+	private Timer audioTimer = new Timer();
+	private IMessage message;
 	private Map<String, String[]> effects = new HashMap<>();
+	private QueueMessage queueMessage;
 	
-	public MessageListener(Ataxia i, IUser c, String[] args, String channelID){
+	public MessageListener(Ataxia i, IUser c, String[] args, String channelID, IMessage message){
 		main = i;
 		client = c;
 		this.args = args;
@@ -79,6 +90,8 @@ public class MessageListener {
 		effects.put("suspense", new String[]{ "suspense", "3000" });
 		effects.put("bombito", new String[]{ "bombito", "7000" });
 		this.channelID = channelID;
+		this.message = message;
+		this.queueMessage = new QueueMessage(main);
 	}
 	
 	public String ping(){
@@ -110,19 +123,24 @@ public class MessageListener {
 		return (JSONArray) new JSONParser().parse(getHTMLString(urlToRead));
 	}
 	
-	@SneakyThrows
 	public String getHTMLString(String urlToRead){
-		StringBuilder result = new StringBuilder();
-	      URL url = new URL(urlToRead);
-	      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-	      conn.setRequestMethod("GET");
-	      BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-	      String line;
-	      while ((line = rd.readLine()) != null) {
-	         result.append(line);
-	      }
-	      rd.close();
-	      return result.toString();
+		try {
+			StringBuilder result = new StringBuilder();
+		      URL url = new URL(urlToRead);
+		      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+		      conn.setRequestMethod("GET");
+		      conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_7_5) " + "AppleWebKit/537.31 (KHTML, like" + " " + "Gecko)" + " Chrome/26.0.1410.65 " + "Safari/537.31");
+		      BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		      String line;
+		      while ((line = rd.readLine()) != null) {
+		         result.append(line);
+		      }
+		      rd.close();
+		      return result.toString();
+		} catch (Exception e){
+			e.printStackTrace();
+		}
+		return "null";
 	}
 	
 	@SneakyThrows
@@ -377,13 +395,103 @@ public class MessageListener {
 	}
 	
 	@SneakyThrows
+	@MessageHandler(aliases = { "queue" }, usage = "!ax:queue <query>", desc="Play Audio", role = Role.MEMBER, channel = Channel.MUSIC)
+	public void onQueue(){
+		main.client.getVoiceChannelByID("199665266764939265").join();
+		message.delete();
+		if (main.cd.handleCooldown("system", CooldownType.ATAXIA_QUEUE, CooldownDuration.SECONDS, 5)){
+			if (main.queue.size() < 10){
+				if (args.length >= 2){
+					if (args[1].equals("remove")){
+						if (!main.queue.containsKey(client.getName())){
+							queueMessage.updateFeedback(client.getName() + ", you don't have anything in the main.queue.");
+						} else {
+							if (main.queueOrder.get(0).equals(client.getName())){
+								AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).skip();
+								main.queue.remove(client.getName());
+								for (int i = 0; i < main.queueOrder.size() - 1; i++){
+									main.queueOrder.put(i, main.queueOrder.get(i+1));
+								}
+								main.queueOrder.remove(main.queueOrder.size() - 1);
+							} else {
+								for (int i = 0; i < main.queueOrder.size(); i++){
+									if (main.queueOrder.get(i).equals(client.getName())){
+										AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).getPlaylist().remove(i);
+										for (int x = i; x < main.queueOrder.size() - 1; x++){
+											main.queueOrder.put(x, main.queueOrder.get(x+1));
+										}
+										main.queueOrder.remove(main.queueOrder.size() - 1);
+										main.queue.remove(client.getName());
+										break;
+									}
+								}
+							}
+							queueMessage.updateFeedback(client.getName() + ", your submission has been removed.");
+						}
+					} else if (!main.queue.containsKey(client.getName())){
+						main.queue.put(client.getName(), main.restOfString(args, 1));
+						int max = -1;
+						for (int i : main.queueOrder.keySet()){
+							max = (i > max ? i : max);
+						}
+						main.queueOrder.put(max+1, client.getName());
+						queueMessage.updateFeedback(client.getName() + ", your submission has been added!");
+						if (new File(client.getID()).exists()){
+							for (File f : new File(client.getID()).listFiles()){
+								f.delete();
+							}
+						} else {
+							new File(client.getID()).mkdirs();
+						}
+						Process p = null;
+						if (args[1].equals("-link")){
+							p = Runtime.getRuntime().exec("youtube-dl -o \"" + client.getID() + "/%(title)s.%(ext)s\" --extract-audio --audio-format mp3 " + args[2]);
+						} else {
+							p = Runtime.getRuntime().exec("youtube-dl -o " + client.getID() + "/%(title)s.%(ext)s ytsearch:\"" +  main.restOfString(args, 2) + "\" --extract-audio --audio-format mp3");
+						}
+						p.waitFor();
+						for (File f : new File(client.getID()).listFiles()){
+							if (f.getName().endsWith(".mp3")){
+								AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).queue(f);
+								break;
+							}
+						}
+					} else {
+						queueMessage.updateFeedback(client.getName() + ", you already have something in the queue!");
+					}
+				} else {
+					queueMessage.updateFeedback(client.getName() + ", please use !ax:queue <query>");
+				}
+				String newMessage = queueMessage.msg.getContent();
+				for (int i = 0; i < main.queueOrder.size(); i++){
+					newMessage = queueMessage.edit(i, main.queue.get(main.queueOrder.get(i)), main.queueOrder.get(i), "Waiting...", newMessage);
+				}
+				if (main.queueOrder.size() < 10){
+					for (int i = main.queueOrder.size(); i < 10; i++){
+						newMessage = queueMessage.edit(i, "Song", "User", "Status", newMessage);
+					}
+				}
+				main.queueMessage.edit(newMessage);
+			} else {
+				queueMessage.updateFeedback(client.getName() + ", the queue is full!");
+			}
+		} else if (main.cd.handleCooldown(client.getName(), CooldownType.ATAXIA_QUEUE, CooldownDuration.SECONDS, 5)){
+			queueMessage.updateFeedback(client.getName() + ", please wait for the global cooldown (5 seconds).");
+		}
+	}
+	
+	@SneakyThrows
 	@MessageHandler(aliases = { "play" }, usage = "!ax:play [-link, -search] <query>", desc="Play Audio", role = Role.MEMBER, channel = Channel.MUSIC)
 	public void onPlay(){
+		queueMessage.updateFeedback(client.getName() + ", please use !ax:queue <query>");
+		/*
 		if (args[1].equals("-stop")){
 			AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).skip();
 			main.client.getVoiceChannelByID("199665266764939265").leave();
+			audioTimer.cancel();
 		} else if ((args[1].equals("-link") || args[1].equals("-search")) && args.length >= 3){
 			try {
+				audioTimer.cancel();
 				AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).clear();
 				for (String f : new File(".").list()){
 					if (f.endsWith(".mp3")){
@@ -396,26 +504,70 @@ public class MessageListener {
 				} else {
 					p = Runtime.getRuntime().exec("youtube-dl ytsearch:\"" +  main.restOfString(args, 2) + "\" --extract-audio --audio-format mp3");
 				}
-				main.sendMessage(ping() + " Downloading!", channelID);
+				IMessage message = main.sendMessage(ping() + " Downloading!", channelID);
+				BufferedReader stdInput = new BufferedReader(new InputStreamReader(p.getInputStream()));
+				BufferedReader stdError = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+				String s = null;
+				long next = 0;
+				while ((s = stdInput.readLine()) != null) {
+					 String localSplz = new String(s);
+					 if (System.currentTimeMillis() >= next){
+						 RequestBuffer.request(() -> {
+							 message.edit(localSplz);
+						 });
+						 next = System.currentTimeMillis() + 2000L;
+					 }
+				}
+				while ((s = stdError.readLine()) != null) {
+					System.out.println(s);
+				}
 				p.waitFor();
 				main.sendMessage(ping() + " Playing!", channelID);
 				main.client.getVoiceChannelByID("199665266764939265").join();
+				String duration = "";
+				long actualDuration = 0L;
 				for (File f : new File(".").listFiles()){
 					if (f.getName().endsWith(".mp3")){
+						duration = main.getAudioDuration(f)[0];
+						actualDuration = Long.parseLong(main.getAudioDuration(f)[1]);
 						AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).queue(f);
 						break;
 					}
 				}
+				final long actualDuration2 = new Long(actualDuration);
+				final String actualDuration3 = new String(duration);
+				audioTimer = main.repeat(() -> {
+					try {
+						 long elapsed = AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).getCurrentTrack().getCurrentTrackTime() / 1000;
+						 long result = (elapsed / (actualDuration2 / 1000))*100;
+						 String lines = "[";
+						 for (int i = 0; i < 100; i++){
+							 lines += i <= result ? "|" : " ";
+						 }
+						 lines += "]";
+						 final String linez = new String(lines);
+						 RequestBuffer.request(() -> {
+							 long sec = (elapsed) % 60;
+							 long min = (elapsed) / 60;
+							 String amin = min < 10 ? "0" + min : min + "";
+							 message.edit("Now Playing: " + main.restOfString(args, 2) + "\n" + amin + ":" + sec + " / " + actualDuration3 + " " + linez);
+						 });
+						} catch (Exception eee){
+							eee.printStackTrace();
+						}
+					}, 3000L, 3000L);
 			} catch (Exception e){
+				audioTimer.cancel();
 				main.sendMessage(ping() + " Something went totally wrong with that. Yikes!", channelID);
 				e.printStackTrace();
 			}
 		} else if (args[1].equals("-elapsed")){
 			main.sendMessage(AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).getCurrentTrack().getCurrentTrackTime() / 1000 + "s", channelID);
 		} else {
+			audioTimer.cancel();
 			main.client.getVoiceChannelByID("199665266764939265").join();
 			AudioPlayer.getAudioPlayerForGuild(main.client.getGuilds().get(0)).queue(new File("data/" + args[1]));
-		}
+		}*/
 	}
 	
 	public void onNotFound(){
@@ -742,6 +894,47 @@ public class MessageListener {
 					}, waitTime);
 				}
 			}
+		}
+	}
+	
+	@MessageHandler(aliases = { "info" }, usage = "!ax:info <user>", desc = "Google information about their avatar!", role = Role.MEMBER, channel = Channel.TIKI_LOUNGE)
+	public void onInfo(){
+		if (args.length == 2){
+			if (main.cd.handleCooldown(client.getID(), CooldownType.ATAXIA_INFO, CooldownDuration.SECONDS, 10)){
+				for (IUser u : main.client.getChannelByID(Long.parseLong(Channel.TIKI_LOUNGE.getId())).getUsersHere()){
+					if (u.getName().toLowerCase().contains(args[1].toLowerCase())){
+						String link = "https://www.google.com/searchbyimage?site=search&sa=X&image_url=" + u.getAvatarURL().replace(".webp", ".png");
+						org.jsoup.nodes.Document doc = Jsoup.parse(getHTMLString(link));
+						String result = "";
+						String[] splits = doc.html().split("\n");
+						for (int i = 0; i < splits.length; i++){
+							String curr = splits[i];
+							if (curr.contains("Best guess")){
+								result = splits[i+1].substring(splits[i+1].indexOf('>')+1).replace("</a>", "");
+								break;
+							}
+						}
+						String imagez = "";
+						Elements images = doc.select(".notranslate");
+						int i = 0;
+						for (Element el : images) {
+							org.json.JSONObject json = new org.json.JSONObject(el.html());
+						    imagez += "\n" + json.getString("ou");
+							EmbedObject embed = new EmbedBuilder().withColor(Color.WHITE).withThumbnail(u.getAvatarURL().replace(".webp", ".png")).withFooterText("Lookup by " + client.getName()).withFooterIcon(client.getAvatarURL().replace(".webp", ".png")).withDesc("Result #" + (i+1) + " for " + result).withUrl(json.getString("ru")).withImage(json.getString("ou")).withTitle(json.getString("pt")).build();
+							main.client.getChannelByID(Channel.TIKI_LOUNGE.getId()).sendMessage(embed);
+							i++;
+							if (i >= 4){
+								break;
+							}
+						}
+						break;
+					}
+				}
+			} else {
+				main.sendMessage(ping() + "Please wait 10 seconds between each lookup!", channelID);
+			}
+		} else {
+			main.sendMessage(ping() + "!ax:info <player>", channelID);
 		}
 	}
 	
