@@ -914,12 +914,10 @@ public class MessageListener {
 								break;
 							}
 						}
-						String imagez = "";
 						Elements images = doc.select(".notranslate");
 						int i = 0;
 						for (Element el : images) {
 							org.json.JSONObject json = new org.json.JSONObject(el.html());
-						    imagez += "\n" + json.getString("ou");
 							EmbedObject embed = new EmbedBuilder().withColor(Color.WHITE).withThumbnail(u.getAvatarURL().replace(".webp", ".png")).withFooterText("Lookup by " + client.getName()).withFooterIcon(client.getAvatarURL().replace(".webp", ".png")).withDesc("Result #" + (i+1) + " for " + result).withUrl(json.getString("ru")).withImage(json.getString("ou")).withTitle(json.getString("pt")).build();
 							main.client.getChannelByID(Channel.TIKI_LOUNGE.getId()).sendMessage(embed);
 							i++;
