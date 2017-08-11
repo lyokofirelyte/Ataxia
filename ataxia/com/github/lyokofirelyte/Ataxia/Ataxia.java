@@ -71,7 +71,7 @@ public class Ataxia {
 	public Map<String, Bind> binds = new HashMap<>();
 	public List<String> audioListeners = new ArrayList<String>();
 	public IDiscordClient client;
-	public MinecraftChatHandler mc;
+	//public MinecraftChatHandler mc;
 	//public AudioListener al;
 	public Cooldown cd;
 	public Plain plain;

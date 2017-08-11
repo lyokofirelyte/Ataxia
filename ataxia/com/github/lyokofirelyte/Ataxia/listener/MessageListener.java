@@ -97,6 +97,80 @@ public class MessageListener {
 	public String ping(){
 		return "<@" + client.getID() + "> ";
 	}
+	
+	@MessageHandler(aliases = { "color" }, usage = "!ax:color #fffff", desc = "Change your color!", role = Role.MOD)
+	public void onColor(){
+		if (main.cd.handleCooldown("system", CooldownType.ATAXIA_COLOR, CooldownDuration.SECONDS, 5)){
+			if (main.cd.handleCooldown(client.getID(), CooldownType.ATAXIA_COLOR, CooldownDuration.SECONDS, 5)){
+				if (args.length == 2){
+					Color newColor = null;
+					try {
+						newColor = Color.decode(args[1]);
+					} catch (Exception e) {
+						main.sendMessage(ping() + "That's an invalid color!", channelID);
+						return;
+					}
+					IRole toRemove = null;
+					for (IRole role : client.getRolesForGuild(main.client.getGuildByID(Ataxia.GUILD_ID))){
+						if (role.getName().startsWith("#")){
+							toRemove = role;
+							break;
+						}
+					}
+					if (toRemove != null) {
+						client.removeRole(toRemove);
+					}
+					IRole newRole = null;
+					for (IRole role : main.client.getGuildByID(Ataxia.GUILD_ID).getRoles()){
+						if (role.getName().equalsIgnoreCase(args[1])) {
+							newRole = role;
+							break;
+						}
+					}
+					if (newRole == null) {
+						newRole = main.client.getGuildByID(Ataxia.GUILD_ID).createRole();
+						newRole.changeColor(newColor);
+						newRole.changeName(args[1]);
+						newRole.changeMentionable(true);
+						client.addRole(newRole);
+					}
+					main.sendMessage(ping() + "Role color changed to " + args[1] + "!", channelID);
+					main.doLater(() -> {
+						List<IRole> toRemoveList = new ArrayList<IRole>();
+						for (IRole role : main.client.getGuildByID(Ataxia.GUILD_ID).getRoles()){
+							if (role.getName().startsWith("#")){
+								boolean found = false;
+								ucheck:
+								for (IUser u : main.client.getUsers()){
+									for (IRole r : u.getRolesForGuild(main.client.getGuildByID(Ataxia.GUILD_ID))) {
+										if (r.getName().equalsIgnoreCase(role.getName())) {
+											found = true;
+											break ucheck;
+										}
+									}
+								}
+								if (!found) {
+									toRemoveList.add(role);
+								}
+							} 
+						}
+						for (IRole role : toRemoveList) {
+							 RequestBuffer.request(() -> {
+								role.delete();
+							 });
+						}
+						if (toRemoveList.size() > 0) {
+							main.sendMessage("Released " + toRemoveList.size() + " color role(s) due to inactivity.", channelID);
+						}
+					}, 3000L);
+				}
+			} else {
+				main.sendMessage("Cooldown of 5 seconds on this command!", channelID);
+			}
+		} else {
+			main.sendMessage("Global cooldown of 5 seconds on this command!", channelID);
+		}
+	}
 
 	@SneakyThrows
 	@MessageHandler(aliases = { "airhorn", "triple", "toilet", "suspense", "bombito" }, usage = "!ax:airhorn", desc = "MLG")
